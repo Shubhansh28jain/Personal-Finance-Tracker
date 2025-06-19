@@ -1,0 +1,32 @@
+from flask import Flask, request, jsonify
+import sqlite3
+
+app = Flask(__name__)
+conn = sqlite3.connect('finance.db', check_same_thread=False)
+c = conn.cursor()
+
+# --- Create Table ---
+c.execute('''CREATE TABLE IF NOT EXISTS expenses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT,
+    amount REAL,
+    date TEXT
+)''')
+conn.commit()
+
+# --- Routes ---
+@app.route('/add', methods=['POST'])
+def add_expense():
+    data = request.json
+    c.execute("INSERT INTO expenses (category, amount, date) VALUES (?, ?, ?)",
+              (data['category'], data['amount'], data['date']))
+    conn.commit()
+    return jsonify({"message": "Expense added!"})
+
+@app.route('/summary', methods=['GET'])
+def get_summary():
+    result = c.execute("SELECT category, SUM(amount) FROM expenses GROUP BY category").fetchall()
+    return jsonify({row[0]: row[1] for row in result})
+
+if __name__ == '__main__':
+    app.run(debug=True)
